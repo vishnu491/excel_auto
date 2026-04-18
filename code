@@ -1,1 +1,131 @@
 
+import os, math
+import pandas as pd
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+from copy import copy
+
+# ── config ──────────────────────────────────────────────────────────────
+
+DUMP_PATH        = "model_dump.xlsx"
+TEMPLATES_FOLDER = "./templates"
+
+SHEET_GENERAL    = "General Model & Review Summary"
+SHEET_RECON      = "Inventory Recon & Evidence"
+MODEL_ID_CELL    = "B4"
+RECON_DATA_COL   = 4              # column D
+
+DUMP_MODEL_ID_COL   = "Model ID"
+DUMP_USE_STATUS_POS = 4          # 0-based position after removing Model ID
+                                   # 0=MRM Inventory Name, 1=Business Owner,
+                                   # 2=Developer, 3=User, 4=Use Status ...
+
+STATUS_NOT_IN_USE = "Not In Use"  # fills rows 7-14  (8 fields)
+STATUS_IN_USE     = "In Use"      # fills rows 7-41  (35 fields)
+NOT_IN_USE_ROWS   = (7, 14)
+IN_USE_ROWS       = (7, 41)
+
+FILL_NEW     = PatternFill("solid", fgColor="92D050")  # green  - new value
+FILL_UPDATED = PatternFill("solid", fgColor="FFFF00")  # yellow - value changed
+FILL_MISSING = PatternFill("solid", fgColor="FF0000")  # red    - empty in dump
+
+# ── load dump ───────────────────────────────────────────────────────────
+
+df = pd.read_excel(DUMP_PATH, dtype=str)
+df.columns = df.columns.str.strip()
+data_cols = [c for c in df.columns if c != DUMP_MODEL_ID_COL]
+
+dump = {}
+for _, row in df.iterrows():
+    mid = str(row[DUMP_MODEL_ID_COL]).strip()
+    if mid:
+        dump[mid] = list(row[data_cols])  # ordered values, Model ID excluded
+
+print(f"Loaded {len(dump)} models from dump")
+
+# ── helpers ─────────────────────────────────────────────────────────────
+
+def is_empty(val):
+    if val is None:
+        return True
+    try:
+        if math.isnan(float(val)):
+            return True
+    except:
+        pass
+    return str(val).strip() == ""
+
+
+def get_row_range(use_status):
+    if use_status == STATUS_NOT_IN_USE:
+        return NOT_IN_USE_ROWS
+    elif use_status == STATUS_IN_USE:
+        return IN_USE_ROWS
+    return None
+
+
+def fill_recon(ws, dump_values, first_row, last_row):
+    counts = {"new": 0, "updated": 0, "same": 0, "missing": 0}
+    for i, row in enumerate(range(first_row, last_row + 1)):
+        if i >= len(dump_values):
+            break
+        dump_val = dump_values[i]
+        cell     = ws.cell(row=row, column=RECON_DATA_COL)
+        old_val  = cell.value
+        if is_empty(dump_val):
+            cell.value = None
+            cell.fill  = copy(FILL_MISSING)
+            counts["missing"] += 1
+        elif is_empty(old_val):
+            cell.value = str(dump_val).strip()
+            cell.fill  = copy(FILL_NEW)
+            counts["new"] += 1
+        elif str(dump_val).strip() == str(old_val).strip():
+            counts["same"] += 1
+        else:
+            cell.value = str(dump_val).strip()
+            cell.fill  = copy(FILL_UPDATED)
+            counts["updated"] += 1
+    return counts
+
+
+def process(path, dump):
+    fname = os.path.basename(path)
+    wb    = load_workbook(path)
+    model_id = str(wb[SHEET_GENERAL][MODEL_ID_CELL].value or "").strip()
+    if not model_id:
+        print(f"  SKIP {fname} - no model id"); return None
+    dump_values = dump.get(model_id)
+    if dump_values is None:
+        print(f"  SKIP {fname} - not in dump"); return None
+    use_status = str(dump_values[DUMP_USE_STATUS_POS] or "").strip()
+    row_range  = get_row_range(use_status)
+    if row_range is None:
+        print(f"  SKIP {fname} - status '{use_status}'"); return None
+    first_row, last_row = row_range
+    counts = fill_recon(wb[SHEET_RECON], dump_values, first_row, last_row)
+    wb.save(path)
+    wb.close()
+    print(f"  DONE {fname} | {use_status} | {counts}")
+    return {"file": fname, "model_id": model_id, "use_status": use_status, **counts}
+
+# ── run ─────────────────────────────────────────────────────────────────
+
+templates = [
+    os.path.join(TEMPLATES_FOLDER, f)
+    for f in sorted(os.listdir(TEMPLATES_FOLDER))
+    if f.endswith(".xlsx") and not f.startswith("~$")
+]
+
+results = []
+for tpl in templates:
+    print(os.path.basename(tpl))
+    r = process(tpl, dump)
+    if r:
+        results.append(r)
+
+print(f"\nDone. Processed {len(results)} of {len(templates)} templates.")
+
+# ── summary ─────────────────────────────────────────────────────────────
+
+display(pd.DataFrame(results))
