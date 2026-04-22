@@ -1,0 +1,218 @@
+# MRM Inventory Report Generator
+Joins `mrm_inventory_Q1.xlsx` and `mrm_validation_inventory_Q1.xlsx` on Model ID to produce the final output report.
+import pandas as pd
+import numpy as np
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+## 1. Load Source Files
+# ------------------------------------------------------------------
+# UPDATE these paths if your files are in a different location
+# ------------------------------------------------------------------
+INVENTORY_FILE   = "mrm_inventory_Q1.xlsx"
+VALIDATION_FILE  = "mrm_validation_inventory_Q1.xlsx"
+OUTPUT_FILE      = "mrm_output_report.xlsx"
+
+df_inv = pd.read_excel(INVENTORY_FILE,  dtype=str)
+df_val = pd.read_excel(VALIDATION_FILE, dtype=str)
+
+print("Inventory shape    :", df_inv.shape)
+print("Validation shape   :", df_val.shape)
+print("\nInventory columns  :", df_inv.columns.tolist())
+print("\nValidation columns :", df_val.columns.tolist())
+## 2. Normalise Column Names & Identify Join Keys
+Strips whitespace and lower-cases headers so the join is resilient to minor naming differences.
+def normalise_cols(df):
+    df.columns = df.columns.str.strip()
+    return df
+
+df_inv = normalise_cols(df_inv)
+df_val = normalise_cols(df_val)
+
+# ------------------------------------------------------------------
+# VERIFY / ADJUST these column name strings to match your actual file
+# ------------------------------------------------------------------
+INV_MODEL_ID_COL   = "Number"            # Model ID column in file 1
+VAL_MODEL_ID_COL   = "Number (model id)" # Model ID column in file 2  (col 6)
+
+# Rename for a clean join key
+df_inv = df_inv.rename(columns={INV_MODEL_ID_COL: "_model_id"})
+df_val = df_val.rename(columns={VAL_MODEL_ID_COL: "_model_id"})
+
+# Strip whitespace from IDs
+df_inv["_model_id"] = df_inv["_model_id"].str.strip()
+df_val["_model_id"] = df_val["_model_id"].str.strip()
+
+print("Sample inventory IDs  :", df_inv["_model_id"].dropna().head(5).tolist())
+print("Sample validation IDs :", df_val["_model_id"].dropna().head(5).tolist())
+## 3. Separate Validation Records by Type (FSV / AR / LSV)
+# ------------------------------------------------------------------
+# VERIFY column name for Validation Type in your file
+# ------------------------------------------------------------------
+VAL_TYPE_COL       = "Validation Type"
+VAL_TASK_ID_COL    = "Number"            # Validation Task ID (col 1 in file 2)
+VAL_END_DATE_COL   = "Actual End Date"
+
+def filter_by_type(df, keyword):
+    """Return rows where Validation Type contains the keyword (case-insensitive)."""
+    mask = df[VAL_TYPE_COL].str.upper().str.contains(keyword.upper(), na=False)
+    return df[mask].copy()
+
+df_fsv = filter_by_type(df_val, "FSV")
+df_ar  = filter_by_type(df_val, "AR")
+df_lsv = filter_by_type(df_val, "LSV")
+
+print(f"FSV rows: {len(df_fsv)}  |  AR rows: {len(df_ar)}  |  LSV rows: {len(df_lsv)}")
+## 4. Keep Most Recent Record per Model for Each Validation Type
+def latest_per_model(df, prefix):
+    """
+    Sort by Actual End Date descending and keep the most recent record
+    per model. Rename relevant columns with a prefix to avoid collisions.
+    """
+    df = df.copy()
+    df[VAL_END_DATE_COL] = pd.to_datetime(df[VAL_END_DATE_COL], errors="coerce")
+    df = df.sort_values(VAL_END_DATE_COL, ascending=False)
+    df = df.drop_duplicates(subset="_model_id", keep="first")
+
+    rename_map = {
+        VAL_TASK_ID_COL  : f"{prefix}_task_id",
+        VAL_END_DATE_COL : f"{prefix}_date",
+    }
+    # Only rename columns that exist
+    rename_map = {k: v for k, v in rename_map.items() if k in df.columns}
+    df = df.rename(columns=rename_map)
+
+    keep = ["_model_id", f"{prefix}_task_id", f"{prefix}_date"]
+    keep = [c for c in keep if c in df.columns]
+    return df[keep]
+
+df_fsv_latest = latest_per_model(df_fsv, "fsv")
+df_ar_latest  = latest_per_model(df_ar,  "ar")
+df_lsv_latest = latest_per_model(df_lsv, "lsv")
+
+print("FSV latest records:", len(df_fsv_latest))
+print("AR  latest records:", len(df_ar_latest))
+print("LSV latest records:", len(df_lsv_latest))
+## 5. Join Everything Together
+# ------------------------------------------------------------------
+# VERIFY these column names exist in df_inv
+# ------------------------------------------------------------------
+INV_MODEL_NAME_COL   = "MRM Inventory Name"
+INV_USE_STATUS_COL   = "Use Status"
+# Retirement Date is not in the source files — will be filled manually
+
+df_base = df_inv[["_model_id", INV_MODEL_NAME_COL, INV_USE_STATUS_COL]].drop_duplicates(subset="_model_id")
+
+df_out = (df_base
+          .merge(df_fsv_latest, on="_model_id", how="left")
+          .merge(df_ar_latest,  on="_model_id", how="left")
+          .merge(df_lsv_latest, on="_model_id", how="left"))
+
+print("Joined output shape:", df_out.shape)
+df_out.head(3)
+## 6. Build the Final Output DataFrame
+Columns not available from source files are set to `"-"` for manual population later.
+def fmt_date(series):
+    """Format dates as DD-MMM-YYYY strings; NaT / missing → '-'."""
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%d-%b-%Y").fillna("-")
+
+final = pd.DataFrame()
+
+# --- Identity columns ---
+final["Ref"]          = range(1, len(df_out) + 1)
+final["Model ID"]     = df_out["_model_id"].values
+final["Model Name"]   = df_out[INV_MODEL_NAME_COL].fillna("-").values
+final["Use Status"]   = df_out[INV_USE_STATUS_COL].fillna("-").values
+final["Retirement Date"] = "-"   # Not in source — fill manually
+
+# --- FSV block ---
+final["FSV Validation Task ID"]                    = df_out.get("fsv_task_id", pd.Series("-", index=df_out.index)).fillna("-").values
+final["FSV Date"]                                   = fmt_date(df_out.get("fsv_date", pd.Series(pd.NaT, index=df_out.index))).values
+final["Risk Tier Assessment Performed Within FSV (Y/N)"] = "-"
+final["OGM Plan Review (Y/N) - FSV"]               = "-"
+final["FSV QA Review Performed (Y/N)"]             = "-"
+
+# --- AR block ---
+final["AR Validation Task ID"]                     = df_out.get("ar_task_id", pd.Series("-", index=df_out.index)).fillna("-").values
+final["AR Date"]                                    = fmt_date(df_out.get("ar_date", pd.Series(pd.NaT, index=df_out.index))).values
+final["Risk Tier Assessment Performed Within AR (Y/N)"] = "-"
+final["OGM Plan Review (Y/N) - AR"]                = "-"
+final["AR QA Review Performed (Y/N)"]              = "-"
+
+# --- LSV block ---
+final["LSV Validation Task ID"]                    = df_out.get("lsv_task_id", pd.Series("-", index=df_out.index)).fillna("-").values
+final["LSV Date"]                                   = fmt_date(df_out.get("lsv_date", pd.Series(pd.NaT, index=df_out.index))).values
+final["OGM Plan Review (Y/N) - LSV"]               = "-"
+
+print("Final output shape:", final.shape)
+final.head()
+## 7. Write to Formatted Excel File
+wb = Workbook()
+ws = wb.active
+ws.title = "MRM Output Report"
+
+# ---- Style helpers ----
+HEADER_FILL   = PatternFill("solid", fgColor="1F3864")   # dark navy
+FSV_FILL      = PatternFill("solid", fgColor="D6E4F0")   # light blue
+AR_FILL       = PatternFill("solid", fgColor="D5F0D6")   # light green
+LSV_FILL      = PatternFill("solid", fgColor="FFF2CC")   # light yellow
+HEADER_FONT   = Font(name="Arial", bold=True, color="FFFFFF", size=10)
+DATA_FONT     = Font(name="Arial", size=10)
+CENTER        = Alignment(horizontal="center", vertical="center", wrap_text=True)
+LEFT          = Alignment(horizontal="left",   vertical="center", wrap_text=True)
+
+thin = Side(style="thin", color="AAAAAA")
+BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+# ---- Section fill map (column index → fill) ----
+# Columns 1-5: identity, 6-10: FSV, 11-15: AR, 16-18: LSV
+def col_fill(col_idx):
+    if 6  <= col_idx <= 10: return FSV_FILL
+    if 11 <= col_idx <= 15: return AR_FILL
+    if 16 <= col_idx <= 18: return LSV_FILL
+    return None
+
+# ---- Write headers ----
+headers = list(final.columns)
+for ci, h in enumerate(headers, start=1):
+    cell = ws.cell(row=1, column=ci, value=h)
+    cell.font      = HEADER_FONT
+    cell.fill      = HEADER_FILL
+    cell.alignment = CENTER
+    cell.border    = BORDER
+
+# ---- Write data rows ----
+for ri, row in enumerate(final.itertuples(index=False), start=2):
+    for ci, val in enumerate(row, start=1):
+        cell = ws.cell(row=ri, column=ci, value=val)
+        cell.font      = DATA_FONT
+        cell.alignment = CENTER if ci == 1 else LEFT
+        cell.border    = BORDER
+        fill = col_fill(ci)
+        if fill:
+            cell.fill = fill
+
+# ---- Column widths ----
+col_widths = {
+    1: 6,   2: 18,  3: 40,  4: 18,  5: 18,
+    6: 28,  7: 16,  8: 38,  9: 22, 10: 28,
+   11: 28, 12: 16, 13: 38, 14: 22, 15: 28,
+   16: 28, 17: 16, 18: 22
+}
+for ci, width in col_widths.items():
+    ws.column_dimensions[get_column_letter(ci)].width = width
+
+# ---- Freeze top row ----
+ws.freeze_panes = "A2"
+
+wb.save(OUTPUT_FILE)
+print(f"✅  Output saved → {OUTPUT_FILE}  ({len(final)} model rows)")
+## 8. Quick Sanity Check
+populated = {
+    "FSV Task ID populated" : (final["FSV Validation Task ID"] != "-").sum(),
+    "AR Task ID populated"  : (final["AR Validation Task ID"]  != "-").sum(),
+    "LSV Task ID populated" : (final["LSV Validation Task ID"] != "-").sum(),
+}
+total = len(final)
+for k, v in populated.items():
+    print(f"{k}: {v} / {total}  ({v/total*100:.1f}%)")
