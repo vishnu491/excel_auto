@@ -1,0 +1,226 @@
+"""
+MRM Inventory Report Generator
+Joins mrm_inventory_Q1.xlsx and mrm_validation_inventory_Q1.xlsx on Model ID.
+
+LIBRARY CHANGE: Uses xlsxwriter (instead of openpyxl) for output generation.
+xlsxwriter produces cleaner, more compatible .xlsx files — avoids corruption
+issues seen with openpyxl on complex bank Excel environments.
+
+Install: pip install xlsxwriter pandas openpyxl
+(openpyxl is still used only for READING the source files via pandas)
+"""
+
+import pandas as pd
+import numpy as np
+import xlsxwriter
+
+# ------------------------------------------------------------------
+# CONFIG — update paths as needed
+# ------------------------------------------------------------------
+INVENTORY_FILE = "mrm_inventory_Q1.xlsx"
+VALIDATION_FILE = "mrm_validation_inventory_Q1.xlsx"
+OUTPUT_FILE = "mrm_output_report.xlsx"
+
+INV_MODEL_ID_COL = "Number"
+VAL_MODEL_ID_COL = "Number (model id)"
+VAL_TYPE_COL = "Validation Type"
+VAL_TASK_ID_COL = "Number"
+VAL_END_DATE_COL = "Actual End Date"
+INV_MODEL_NAME_COL = "MRM Inventory Name"
+INV_USE_STATUS_COL = "Use Status"
+
+
+# ------------------------------------------------------------------
+# 1. Load source files
+# ------------------------------------------------------------------
+df_inv = pd.read_excel(INVENTORY_FILE, dtype=str)
+df_val = pd.read_excel(VALIDATION_FILE, dtype=str)
+
+df_inv.columns = df_inv.columns.str.strip()
+df_val.columns = df_val.columns.str.strip()
+
+print(f"Inventory shape    : {df_inv.shape}")
+print(f"Validation shape   : {df_val.shape}")
+
+
+# ------------------------------------------------------------------
+# 2. Normalise join keys
+# ------------------------------------------------------------------
+df_inv = df_inv.rename(columns={INV_MODEL_ID_COL: "_model_id"})
+df_val = df_val.rename(columns={VAL_MODEL_ID_COL: "_model_id"})
+
+df_inv["_model_id"] = df_inv["_model_id"].str.strip()
+df_val["_model_id"] = df_val["_model_id"].str.strip()
+
+
+# ------------------------------------------------------------------
+# 3. Split validation records by type
+# ------------------------------------------------------------------
+def filter_by_type(df, keyword):
+    mask = df[VAL_TYPE_COL].str.upper().str.contains(keyword.upper(), na=False)
+    return df[mask].copy()
+
+df_fsv = filter_by_type(df_val, "FSV")
+df_ar  = filter_by_type(df_val, "AR")
+df_lsv = filter_by_type(df_val, "LSV")
+
+print(f"FSV rows: {len(df_fsv)}  |  AR rows: {len(df_ar)}  |  LSV rows: {len(df_lsv)}")
+
+
+# ------------------------------------------------------------------
+# 4. Keep most recent record per model per validation type
+# ------------------------------------------------------------------
+def latest_per_model(df, prefix):
+    df = df.copy()
+    df[VAL_END_DATE_COL] = pd.to_datetime(df[VAL_END_DATE_COL], errors="coerce")
+    df = df.sort_values(VAL_END_DATE_COL, ascending=False)
+    df = df.drop_duplicates(subset="_model_id", keep="first")
+    rename_map = {c: v for c, v in {
+        VAL_TASK_ID_COL: f"{prefix}_task_id",
+        VAL_END_DATE_COL: f"{prefix}_date",
+    }.items() if c in df.columns}
+    df = df.rename(columns=rename_map)
+    keep = [c for c in ["_model_id", f"{prefix}_task_id", f"{prefix}_date"] if c in df.columns]
+    return df[keep]
+
+df_fsv_latest = latest_per_model(df_fsv, "fsv")
+df_ar_latest  = latest_per_model(df_ar,  "ar")
+df_lsv_latest = latest_per_model(df_lsv, "lsv")
+
+
+# ------------------------------------------------------------------
+# 5. Join everything
+# ------------------------------------------------------------------
+df_base = df_inv[["_model_id", INV_MODEL_NAME_COL, INV_USE_STATUS_COL]].drop_duplicates(subset="_model_id")
+
+df_out = (df_base
+          .merge(df_fsv_latest, on="_model_id", how="left")
+          .merge(df_ar_latest,  on="_model_id", how="left")
+          .merge(df_lsv_latest, on="_model_id", how="left"))
+
+print(f"Joined output shape: {df_out.shape}")
+
+
+# ------------------------------------------------------------------
+# 6. Build final DataFrame
+# ------------------------------------------------------------------
+def fmt_date(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%d-%b-%Y").fillna("-")
+
+empty = pd.Series("-", index=df_out.index)
+empty_date = pd.Series(pd.NaT, index=df_out.index)
+
+final = pd.DataFrame({
+    "Ref":          range(1, len(df_out) + 1),
+    "Model ID":     df_out["_model_id"].values,
+    "Model Name":   df_out[INV_MODEL_NAME_COL].fillna("-").values,
+    "Use Status":   df_out[INV_USE_STATUS_COL].fillna("-").values,
+    "Retirement Date": "-",
+
+    "FSV Validation Task ID":                         df_out.get("fsv_task_id", empty).fillna("-").values,
+    "FSV Date":                                        fmt_date(df_out.get("fsv_date", empty_date)).values,
+    "Risk Tier Assessment Performed Within FSV (Y/N)": "-",
+    "OGM Plan Review (Y/N) - FSV":                    "-",
+    "FSV QA Review Performed (Y/N)":                  "-",
+
+    "AR Validation Task ID":                          df_out.get("ar_task_id", empty).fillna("-").values,
+    "AR Date":                                         fmt_date(df_out.get("ar_date", empty_date)).values,
+    "Risk Tier Assessment Performed Within AR (Y/N)": "-",
+    "OGM Plan Review (Y/N) - AR":                     "-",
+    "AR QA Review Performed (Y/N)":                   "-",
+
+    "LSV Validation Task ID":                         df_out.get("lsv_task_id", empty).fillna("-").values,
+    "LSV Date":                                        fmt_date(df_out.get("lsv_date", empty_date)).values,
+    "OGM Plan Review (Y/N) - LSV":                    "-",
+})
+
+print(f"Final output shape : {final.shape}")
+
+
+# ------------------------------------------------------------------
+# 7. Write to Excel using xlsxwriter
+#    xlsxwriter writes clean .xlsx from scratch — no re-parsing of
+#    existing files, so no corruption risk whatsoever.
+# ------------------------------------------------------------------
+workbook  = xlsxwriter.Workbook(OUTPUT_FILE)
+worksheet = workbook.add_worksheet("MRM Output Report")
+
+# ---- Format definitions ----
+header_fmt = workbook.add_format({
+    "bold": True, "font_name": "Arial", "font_size": 10,
+    "font_color": "#FFFFFF", "bg_color": "#1F3864",
+    "align": "center", "valign": "vcenter",
+    "text_wrap": True, "border": 1, "border_color": "#AAAAAA",
+})
+
+def data_fmt(bg=None, center=False):
+    props = {
+        "font_name": "Arial", "font_size": 10,
+        "align": "center" if center else "left",
+        "valign": "vcenter", "text_wrap": True,
+        "border": 1, "border_color": "#AAAAAA",
+    }
+    if bg:
+        props["bg_color"] = bg
+    return workbook.add_format(props)
+
+# Section colour bands
+FMT_PLAIN  = data_fmt()
+FMT_CENTER = data_fmt(center=True)
+FMT_FSV    = data_fmt(bg="#D6E4F0")   # light blue
+FMT_AR     = data_fmt(bg="#D5F0D6")   # light green
+FMT_LSV    = data_fmt(bg="#FFF2CC")   # light yellow
+
+# col index → format  (0-based)
+def col_fmt(ci):
+    if 5  <= ci <= 9:  return FMT_FSV
+    if 10 <= ci <= 14: return FMT_AR
+    if 15 <= ci <= 17: return FMT_LSV
+    return FMT_CENTER if ci == 0 else FMT_PLAIN
+
+# ---- Column widths (0-based col index → width) ----
+col_widths = {
+    0: 6,   1: 18,  2: 40,  3: 18,  4: 18,
+    5: 28,  6: 16,  7: 38,  8: 22,  9: 28,
+   10: 28, 11: 16, 12: 38, 13: 22, 14: 28,
+   15: 28, 16: 16, 17: 22,
+}
+for ci, width in col_widths.items():
+    worksheet.set_column(ci, ci, width)
+
+# ---- Row height for header ----
+worksheet.set_row(0, 36, None)
+
+# ---- Write headers ----
+headers = list(final.columns)
+for ci, h in enumerate(headers):
+    worksheet.write(0, ci, h, header_fmt)
+
+# ---- Write data rows ----
+for ri, row in enumerate(final.itertuples(index=False), start=1):
+    worksheet.set_row(ri, 20)
+    for ci, val in enumerate(row):
+        worksheet.write(ri, ci, val, col_fmt(ci))
+
+# ---- Freeze top row ----
+worksheet.freeze_panes(1, 0)
+
+# ---- Auto-filter ----
+worksheet.autofilter(0, 0, len(final), len(headers) - 1)
+
+workbook.close()
+
+print(f"\n✅  Output saved → {OUTPUT_FILE}  ({len(final)} model rows)")
+
+
+# ------------------------------------------------------------------
+# 8. Sanity check
+# ------------------------------------------------------------------
+total = len(final)
+for col, label in [
+    ("FSV Validation Task ID", "FSV Task ID populated"),
+    ("AR Validation Task ID",  "AR Task ID populated"),
+    ("LSV Validation Task ID", "LSV Task ID populated"),
+]:
+    n = (final[col] != "-").sum()
+    print(f"{label}: {n} / {total}  ({n/total*100:.1f}%)")
