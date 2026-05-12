@@ -1,0 +1,430 @@
+MRM Model Inventory Reconciliation - Automation Script
+-------------------------------------------------------
+1. Downloads Excel file from SharePoint/OneDrive
+2. Reads the activity tab and pulls Status column data
+3. Builds a styled dashboard Excel file
+4. Opens a pre-filled Outlook draft email ready to send
+
+SETUP (one time):
+    pip install office365-rest-python-client openpyxl pandas
+
+CONFIGURE the variables in the CONFIG section below before running.
+"""
+
+import os
+import io
+import datetime
+import pandas as pd
+import openpyxl
+from openpyxl.styles import (
+    Font, PatternFill, Alignment, Border, Side, GradientFill
+)
+from openpyxl.chart import DoughnutChart, Reference
+from openpyxl.chart.series import DataPoint
+from openpyxl.utils import get_column_letter
+
+# ── Optional: only needed if Outlook draft is enabled ──────────────────────
+try:
+    import win32com.client
+    OUTLOOK_AVAILABLE = True
+except ImportError:
+    OUTLOOK_AVAILABLE = False
+
+# ── Optional: SharePoint download ──────────────────────────────────────────
+try:
+    from office365.sharepoint.client_context import ClientContext
+    from office365.runtime.auth.user_credential import UserCredential
+    SHAREPOINT_AVAILABLE = True
+except ImportError:
+    SHAREPOINT_AVAILABLE = False
+
+
+# ===========================================================================
+# CONFIG — fill these in before running
+# ===========================================================================
+
+SHAREPOINT_SITE_URL  = "https://yourcompany.sharepoint.com/sites/YourSiteName"
+SHAREPOINT_FILE_PATH = "/sites/YourSiteName/Shared Documents/MRM/ModelInventory.xlsx"
+SP_USERNAME          = "your.email@company.com"   # or use token auth
+SP_PASSWORD          = "your_password"             # use env var in production
+
+ACTIVITY_SHEET_NAME  = "Detail1"        # exact tab name with your data
+STATUS_COLUMN        = "Status"         # column header in that tab
+
+OUTPUT_PATH          = r"C:\Users\YourName\Desktop\MRM_Dashboard.xlsx"
+
+EMAIL_TO             = "stakeholder@company.com"
+EMAIL_CC             = ""                          # leave blank if not needed
+EMAIL_SUBJECT        = f"MRM Model Inventory Reconciliation Dashboard – {datetime.date.today().strftime('%B %Y')}"
+
+# ===========================================================================
+
+
+# ── PURPLE PALETTE ──────────────────────────────────────────────────────────
+DARK_PURPLE   = "4B1075"
+MID_PURPLE    = "6B1FA0"
+LIGHT_PURPLE  = "9B59C8"
+PALE_PURPLE   = "C89AE8"
+WHITE         = "FFFFFF"
+LIGHT_GREY    = "F5F6FA"
+MID_GREY      = "E0E0E0"
+TEXT_DARK     = "1A1D2E"
+TEXT_MUTED    = "6B6F8A"
+
+
+def thin_border(color="DDDDDD"):
+    s = Side(style="thin", color=color)
+    return Border(left=s, right=s, top=s, bottom=s)
+
+
+def bottom_border(color="DDDDDD"):
+    s = Side(style="thin", color=color)
+    return Border(bottom=s)
+
+
+# ---------------------------------------------------------------------------
+# STEP 1 — Download from SharePoint
+# ---------------------------------------------------------------------------
+
+def download_from_sharepoint() -> bytes:
+    if not SHAREPOINT_AVAILABLE:
+        raise ImportError(
+            "office365-rest-python-client not installed.\n"
+            "Run: pip install office365-rest-python-client"
+        )
+    ctx = ClientContext(SHAREPOINT_SITE_URL).with_credentials(
+        UserCredential(SP_USERNAME, SP_PASSWORD)
+    )
+    file_content = ctx.web.get_file_by_server_relative_url(
+        SHAREPOINT_FILE_PATH
+    ).get_content().execute_query()
+    print(f"✓ Downloaded file from SharePoint")
+    return file_content
+
+
+# ---------------------------------------------------------------------------
+# STEP 2 — Read & summarise data
+# ---------------------------------------------------------------------------
+
+def get_stage_summary(file_bytes: bytes) -> dict:
+    df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=ACTIVITY_SHEET_NAME)
+
+    if STATUS_COLUMN not in df.columns:
+        raise ValueError(
+            f"Column '{STATUS_COLUMN}' not found in sheet '{ACTIVITY_SHEET_NAME}'.\n"
+            f"Available columns: {list(df.columns)}"
+        )
+
+    counts = df[STATUS_COLUMN].value_counts().to_dict()
+
+    # Normalise keys — handle "Stage :0", "Stage:0", "Stage 0" etc.
+    normalised = {}
+    for k, v in counts.items():
+        key = str(k).replace(" ", "").replace(":", "").lower()   # "stage0"
+        normalised[key] = v
+
+    summary = {
+        "Stage 0": normalised.get("stage0", 0),
+        "Stage 1": normalised.get("stage1", 0),
+        "Stage 2": normalised.get("stage2", 0),
+    }
+    summary["Grand Total"] = sum(summary.values())
+
+    print(f"✓ Data read — {summary}")
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# STEP 3 — Build styled dashboard Excel
+# ---------------------------------------------------------------------------
+
+def build_dashboard(summary: dict, output_path: str):
+    wb = openpyxl.Workbook()
+
+    # ── DATA SHEET (hidden, feeds chart formulas) ───────────────────────────
+    data_ws = wb.create_sheet("_Data")
+    data_ws.sheet_state = "hidden"
+    data_ws.append(["Stage", "Count"])
+    for stage in ["Stage 0", "Stage 1", "Stage 2"]:
+        data_ws.append([stage, summary[stage]])
+
+    # ── DASHBOARD SHEET ──────────────────────────────────────────────────────
+    ws = wb.active
+    ws.title = "Dashboard"
+    ws.sheet_view.showGridLines = False
+
+    # Column widths
+    col_widths = {"A": 3, "B": 22, "C": 18, "D": 18, "E": 18, "F": 18, "G": 3}
+    for col, w in col_widths.items():
+        ws.column_dimensions[col].width = w
+
+    # Row heights
+    ws.row_dimensions[1].height = 10
+    ws.row_dimensions[2].height = 14
+    ws.row_dimensions[3].height = 32
+    ws.row_dimensions[4].height = 22
+    ws.row_dimensions[5].height = 14
+    ws.row_dimensions[6].height = 10
+    for r in range(7, 12):
+        ws.row_dimensions[r].height = 54
+    ws.row_dimensions[12].height = 14
+
+    # ── HEADER BANNER (rows 2-5, cols B-F) ──────────────────────────────────
+    purple_fill = PatternFill("solid", fgColor=MID_PURPLE)
+    for row in range(2, 6):
+        for col in range(2, 7):
+            ws.cell(row=row, column=col).fill = purple_fill
+
+    ws.merge_cells("B3:F3")
+    title_cell = ws["B3"]
+    title_cell.value = "Model Inventory Reconciliation Dashboard – May 2026"
+    title_cell.font = Font(name="Arial", size=16, bold=True, color=WHITE)
+    title_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    ws.merge_cells("B4:F4")
+    sub_cell = ws["B4"]
+    sub_cell.value = (
+        f"MRM  ·  As of {datetime.date.today().strftime('%m/%d/%Y')}  ·  08:30 AM EST"
+    )
+    sub_cell.font = Font(name="Arial", size=10, color="D9B8F0")
+    sub_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    # ── KPI CARDS (row 7, cols B-E) ─────────────────────────────────────────
+    kpi_data = [
+        ("TOTAL MODELS",  summary["Grand Total"], DARK_PURPLE, "Full inventory"),
+        ("STAGE 0",       summary["Stage 0"],     MID_PURPLE,  f"{summary['Stage 0']/summary['Grand Total']:.0%} of total"),
+        ("STAGE 1",       summary["Stage 1"],     LIGHT_PURPLE, f"{summary['Stage 1']/summary['Grand Total']:.0%} of total"),
+        ("STAGE 2",       summary["Stage 2"],     PALE_PURPLE,  f"{summary['Stage 2']/summary['Grand Total']:.0%} of total"),
+    ]
+
+    kpi_cols = [2, 3, 4, 5]  # B, C, D, E
+
+    for (label, value, color, sub), col in zip(kpi_data, kpi_cols):
+        # top accent bar (row 6 acts as top border)
+        accent = ws.cell(row=6, column=col)
+        accent.fill = PatternFill("solid", fgColor=color)
+
+        card = ws.cell(row=7, column=col)
+        card.fill = PatternFill("solid", fgColor=WHITE)
+
+        # Label
+        lbl = ws.cell(row=7, column=col)
+        lbl.fill = PatternFill("solid", fgColor=WHITE)
+
+        # Use rich layout: label top, number middle, sub bottom via line breaks
+        lbl.value = f"{label}\n{value}\n{sub}"
+        lbl.alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=True
+        )
+
+        # Different font sizes via a workaround — write three rows instead
+        # Row 7 = label, Row 8 = number, Row 9 = sub
+        ws.row_dimensions[7].height = 20
+        ws.row_dimensions[8].height = 44
+        ws.row_dimensions[9].height = 18
+
+        label_cell = ws.cell(row=7, column=col)
+        label_cell.value = label
+        label_cell.font = Font(name="Arial", size=9, bold=True, color=TEXT_MUTED)
+        label_cell.alignment = Alignment(horizontal="center", vertical="bottom")
+        label_cell.fill = PatternFill("solid", fgColor=WHITE)
+
+        num_cell = ws.cell(row=8, column=col)
+        num_cell.value = value
+        num_cell.font = Font(name="Arial", size=28, bold=True, color=color)
+        num_cell.alignment = Alignment(horizontal="center", vertical="center")
+        num_cell.fill = PatternFill("solid", fgColor=WHITE)
+
+        sub_cell = ws.cell(row=9, column=col)
+        sub_cell.value = sub
+        sub_cell.font = Font(name="Arial", size=9, color=TEXT_MUTED)
+        sub_cell.alignment = Alignment(horizontal="center", vertical="top")
+        sub_cell.fill = PatternFill("solid", fgColor=WHITE)
+
+        # card shadow row
+        ws.cell(row=10, column=col).fill = PatternFill("solid", fgColor=MID_GREY)
+
+    # ── SECTION LABEL ────────────────────────────────────────────────────────
+    ws.row_dimensions[11].height = 16
+    lbl = ws.cell(row=11, column=2)
+    lbl.value = "RECONCILIATION STATUS BY STAGE"
+    lbl.font = Font(name="Arial", size=9, bold=True, color=TEXT_MUTED)
+    lbl.alignment = Alignment(vertical="center")
+
+    # ── STAGE TABLE (rows 12-17) ─────────────────────────────────────────────
+    ws.row_dimensions[12].height = 22  # header
+    for r in range(13, 17):
+        ws.row_dimensions[r].height = 22
+
+    headers = ["Stage", "No. of Models", "% of Total"]
+    hdr_fill = PatternFill("solid", fgColor=MID_PURPLE)
+    for i, h in enumerate(headers):
+        col = i + 2   # B, C, D
+        c = ws.cell(row=12, column=col)
+        c.value = h
+        c.font = Font(name="Arial", size=10, bold=True, color=WHITE)
+        c.fill = hdr_fill
+        c.alignment = Alignment(horizontal="center" if i > 0 else "left",
+                                 vertical="center")
+        c.border = thin_border(MID_PURPLE)
+
+    stage_colors = [MID_PURPLE, LIGHT_PURPLE, PALE_PURPLE]
+    stages = ["Stage 0", "Stage 1", "Stage 2"]
+
+    for i, (stage, scolor) in enumerate(zip(stages, stage_colors)):
+        row = 13 + i
+        alt_fill = PatternFill("solid", fgColor=LIGHT_GREY if i % 2 == 0 else WHITE)
+
+        # Stage name
+        c = ws.cell(row=row, column=2)
+        c.value = stage
+        c.font = Font(name="Arial", size=10, bold=True, color=scolor)
+        c.fill = alt_fill
+        c.alignment = Alignment(horizontal="left", vertical="center")
+        c.border = bottom_border()
+
+        # Count — formula referencing _Data sheet
+        data_row = i + 2   # _Data row 2 = Stage 0, etc.
+        c2 = ws.cell(row=row, column=3)
+        c2.value = f"=_Data!B{data_row}"
+        c2.font = Font(name="Arial", size=10, color=TEXT_DARK)
+        c2.fill = alt_fill
+        c2.alignment = Alignment(horizontal="center", vertical="center")
+        c2.number_format = "#,##0"
+        c2.border = bottom_border()
+
+        # % of total
+        c3 = ws.cell(row=row, column=4)
+        c3.value = f"=C{row}/C16"
+        c3.font = Font(name="Arial", size=10, color=TEXT_DARK)
+        c3.fill = alt_fill
+        c3.alignment = Alignment(horizontal="center", vertical="center")
+        c3.number_format = "0.0%"
+        c3.border = bottom_border()
+
+    # Grand total row
+    ws.row_dimensions[16].height = 24
+    gt_fill = PatternFill("solid", fgColor=DARK_PURPLE)
+    for col, val in [(2, "Grand Total"), (3, "=SUM(C13:C15)"), (4, '=C16/C16')]:
+        c = ws.cell(row=16, column=col)
+        c.value = val
+        c.font = Font(name="Arial", size=10, bold=True, color=WHITE)
+        c.fill = gt_fill
+        c.alignment = Alignment(
+            horizontal="left" if col == 2 else "center", vertical="center"
+        )
+        if col == 4:
+            c.number_format = "0.0%"
+        elif col == 3:
+            c.number_format = "#,##0"
+
+    # ── DOUGHNUT CHART ───────────────────────────────────────────────────────
+    chart = DoughnutChart()
+    chart.title = None
+    chart.style = 10
+    chart.hole_size = 55
+
+    labels = Reference(data_ws, min_col=1, min_row=2, max_row=4)
+    data_ref = Reference(data_ws, min_col=2, min_row=1, max_row=4)
+    chart.add_data(data_ref, titles_from_data=True)
+    chart.set_categories(labels)
+
+    # Custom slice colours
+    slice_colors = [DARK_PURPLE, MID_PURPLE, PALE_PURPLE]
+    series = chart.series[0]
+    for idx, color in enumerate(slice_colors):
+        pt = DataPoint(idx=idx)
+        pt.graphicalProperties.solidFill = color
+        series.dPt.append(pt)
+
+    chart.width  = 12
+    chart.height = 10
+    ws.add_chart(chart, "B18")
+
+    # ── FOOTER ───────────────────────────────────────────────────────────────
+    ws.row_dimensions[33].height = 16
+    footer = ws.cell(row=33, column=2)
+    footer.value = (
+        f"MRM Model Inventory Reconciliation  ·  "
+        f"Generated {datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p')}  ·  Internal Use Only"
+    )
+    footer.font = Font(name="Arial", size=8, color=TEXT_MUTED)
+    footer.alignment = Alignment(vertical="center")
+
+    wb.save(output_path)
+    print(f"✓ Dashboard saved → {output_path}")
+
+
+# ---------------------------------------------------------------------------
+# STEP 4 — Open Outlook draft (Windows only)
+# ---------------------------------------------------------------------------
+
+def open_outlook_draft(summary: dict, attachment_path: str):
+    if not OUTLOOK_AVAILABLE:
+        print(
+            "\n⚠ win32com not available (likely not on Windows).\n"
+            "  To enable Outlook drafts: pip install pywin32\n"
+            f"  Attach this file manually: {attachment_path}"
+        )
+        return
+
+    today = datetime.date.today().strftime("%B %d, %Y")
+    total = summary["Grand Total"]
+
+    body = f"""Hi Team,
+
+Please find attached the MRM Model Inventory Reconciliation Dashboard for {today}.
+
+Summary:
+  • Total Models:  {total}
+  • Stage 0:       {summary['Stage 0']}  ({summary['Stage 0']/total:.0%})
+  • Stage 1:       {summary['Stage 1']}  ({summary['Stage 1']/total:.0%})
+  • Stage 2:       {summary['Stage 2']}  ({summary['Stage 2']/total:.0%})
+
+The full dashboard is attached as an Excel file.
+
+Please let me know if you have any questions.
+
+Regards
+"""
+
+    outlook = win32com.client.Dispatch("Outlook.Application")
+    mail = outlook.CreateItem(0)   # 0 = olMailItem
+    mail.To      = EMAIL_TO
+    mail.CC      = EMAIL_CC
+    mail.Subject = EMAIL_SUBJECT
+    mail.Body    = body
+    mail.Attachments.Add(os.path.abspath(attachment_path))
+    mail.Display(False)   # opens draft window — you review & hit Send
+
+    print("✓ Outlook draft opened — review and click Send")
+
+
+# ---------------------------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------------------------
+
+def main():
+    print("\n── MRM Dashboard Automation ──────────────────────")
+
+    # Step 1: Download
+    print("\n[1/4] Downloading from SharePoint …")
+    file_bytes = download_from_sharepoint()
+
+    # Step 2: Read data
+    print("[2/4] Reading activity data …")
+    summary = get_stage_summary(file_bytes)
+
+    # Step 3: Build dashboard
+    print("[3/4] Building dashboard …")
+    build_dashboard(summary, OUTPUT_PATH)
+
+    # Step 4: Open Outlook draft
+    print("[4/4] Preparing Outlook draft …")
+    open_outlook_draft(summary, OUTPUT_PATH)
+
+    print("\n✓ Done! Review the Outlook draft and hit Send.\n")
+
+
+if __name__ == "__main__":
+    main()
