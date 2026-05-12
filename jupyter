@@ -1,0 +1,76 @@
+# [CELL 1: TAG THIS CELL AS "parameters"]
+input_file = r'C:/path/to/source.xlsx'
+output_file = r'C:/path/to/dashboard.xlsx'
+sheet_name = 'Detail1'
+
+# [CELL 2: THE SCRIPT]
+import pandas as pd
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.chart import DoughnutChart, Reference
+import datetime
+
+def generate_dashboard():
+    # 1. Read Data
+    df = pd.read_excel(input_file, sheet_name=sheet_name)
+    counts = df['Status'].value_counts().to_dict()
+    
+    # Normalize Stage keys
+    s0 = counts.get('Stage :0', counts.get('Stage 0', 0))
+    s1 = counts.get('Stage :1', counts.get('Stage 1', 0))
+    s2 = counts.get('Stage :2', counts.get('Stage 2', 0))
+    total = s0 + s1 + s2
+
+    # 2. Setup Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dashboard"
+    ws.sheet_view.showGridLines = False
+
+    # 3. Header & Styling
+    purple_fill = PatternFill("solid", fgColor="4B1075")
+    ws.merge_cells("B2:F3")
+    header = ws["B2"]
+    header.value = f"Inventory Reconciliation Dashboard - {datetime.date.today().strftime('%B %Y')}"
+    header.fill = purple_fill
+    header.font = Font(color="FFFFFF", bold=True, size=14)
+    header.alignment = Alignment(horizontal="center", vertical="center")
+
+    # 4. KPI Cards
+    kpis = [("Total", total), ("Stage 0", s0), ("Stage 1", s1), ("Stage 2", s2)]
+    for i, (label, val) in enumerate(kpis):
+        cell_label = ws.cell(row=5, column=i+2)
+        cell_val = ws.cell(row=6, column=i+2)
+        
+        cell_label.value = label
+        cell_val.value = val
+        
+        cell_label.font = Font(bold=True)
+        cell_val.font = Font(size=18, bold=True, color="4B1075")
+        cell_val.alignment = Alignment(horizontal="center")
+
+    # 5. Add Donut Chart
+    # (Helper sheet for chart data)
+    data_ws = wb.create_sheet("ChartData")
+    data_ws.append(["Stage", "Count"])
+    data_ws.append(["Stage 0", s0])
+    data_ws.append(["Stage 1", s1])
+    data_ws.append(["Stage 2", s2])
+    
+    chart = DoughnutChart()
+    labels = Reference(data_ws, min_col=1, min_row=2, max_row=4)
+    data = Reference(data_ws, min_col=2, min_row=1, max_row=4)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(labels)
+    chart.title = "Reconciliation Status"
+    
+    ws.add_chart(chart, "B8")
+    data_ws.sheet_state = 'hidden'
+
+    wb.save(output_file)
+    print(f"Dashboard saved successfully to {output_file}")
+
+generate_dashboard()
+
+
+#jupyter nbconvert --to notebook --execute mrm_automation.ipynb --ExecutePreprocessor.timeout=600 --Parameters.input_file="C:/SharedDrive/Source.xlsx" --Parameters.output_file="C:/Output/Final_Dashboard.xlsx"
