@@ -1,0 +1,185 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+from datetime import datetime, timedelta
+import warnings
+warnings.filterwarnings('ignore')
+
+# ─────────────────────────────────────────
+# 1. LOAD DATA
+# ─────────────────────────────────────────
+FILE_PATH = "MRO_Mailbox_Tracker.xlsx"
+SHEET     = "Sheet2"          # change if needed
+
+df = pd.read_excel(FILE_PATH, sheet_name=SHEET)
+
+# Standardise column names (strip spaces)
+df.columns = df.columns.str.strip()
+
+# Parse dates
+df['Date Received'] = pd.to_datetime(df['Date Received'])
+df['Date Closed']   = pd.to_datetime(df['Date Closed'],   errors='coerce')
+
+# Compute TAT in hours if not already populated
+df['TAT (hrs)'] = (
+    (df['Date Closed'] - df['Date Received'])
+    .dt.total_seconds() / 3600
+).round(1)
+
+print(f"Total emails loaded: {len(df)}")
+df.head()
+
+
+# ─────────────────────────────────────────
+# 2. FILTER HELPERS
+# ─────────────────────────────────────────
+def filter_period(dataframe, period='week', ref_date=None):
+    """Return rows for 'week' (last 7 days) or 'day' (today)."""
+    if ref_date is None:
+        ref_date = datetime.today()
+    if period == 'week':
+        start = ref_date - timedelta(days=7)
+    else:  # day
+        start = ref_date.replace(hour=0, minute=0, second=0)
+    return dataframe[dataframe['Date Received'] >= start]
+
+
+# ─────────────────────────────────────────
+# 3. SUMMARY FUNCTION
+# ─────────────────────────────────────────
+CATEGORIES = [
+    'ServiceNow Notifications',
+    'Stakeholder SNOW Updates',
+    'MCA/Candidate Assessment',
+    'No Response Needed',
+    'SNOW Access Requests',
+    'Inventory Field Reconciliation',
+]
+
+def generate_summary(dataframe, label='Weekly'):
+    total = len(dataframe)
+    print(f"\n{'='*50}")
+    print(f"  MRO Mailbox Report — {label}  (n={total})")
+    print(f"{'='*50}")
+
+    # Category breakdown
+    cat_counts = (
+        dataframe['Category']
+        .value_counts()
+        .reindex(CATEGORIES, fill_value=0)
+    )
+    print("\n📂 Emails by Category:")
+    for cat, cnt in cat_counts.items():
+        pct = (cnt / total * 100) if total else 0
+        print(f"  {cat:<40} {cnt:>4}  ({pct:.1f}%)")
+
+    # Status breakdown
+    print("\n📊 Emails by Status:")
+    for status, cnt in dataframe['Status'].value_counts().items():
+        print(f"  {status:<20} {cnt:>4}")
+
+    # Avg TAT (closed items only)
+    closed = dataframe[dataframe['Status'] == 'Closed']
+    avg_tat = closed['TAT (hrs)'].mean()
+    print(f"\n⏱  Avg Turnaround (closed): {avg_tat:.1f} hrs")
+
+    # Response sent
+    resp = dataframe['Response Sent'].value_counts()
+    print(f"\n✉️  Response Sent breakdown:")
+    for k, v in resp.items():
+        print(f"  {k:<10} {v:>4}")
+
+    return cat_counts
+
+
+# ─────────────────────────────────────────
+# 4. RUN REPORTS
+# ─────────────────────────────────────────
+weekly_df = filter_period(df, 'week')
+daily_df  = filter_period(df, 'day')
+
+weekly_cats = generate_summary(weekly_df, label='Weekly')
+daily_cats  = generate_summary(daily_df,  label='Daily')
+
+
+# ─────────────────────────────────────────
+# 5. CHARTS
+# ─────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+fig.suptitle('MRO Mailbox — Weekly Dashboard', fontsize=14, fontweight='bold')
+
+# A) Bar: emails by category
+ax1 = axes[0]
+colors = ['#4472C4','#ED7D31','#A9D18E','#FFC000','#FF0000','#70AD47']
+bars = ax1.barh(weekly_cats.index, weekly_cats.values, color=colors)
+ax1.set_xlabel('Count')
+ax1.set_title('Emails by Category')
+ax1.invert_yaxis()
+for bar, val in zip(bars, weekly_cats.values):
+    ax1.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height()/2,
+             str(val), va='center', fontsize=9)
+
+# B) Pie: status distribution
+ax2 = axes[1]
+status_counts = weekly_df['Status'].value_counts()
+ax2.pie(status_counts, labels=status_counts.index, autopct='%1.0f%%',
+        startangle=90, colors=['#70AD47','#FFC000','#4472C4','#FF0000'])
+ax2.set_title('Status Distribution')
+
+# C) Line: daily email volume (last 14 days)
+ax3 = axes[2]
+last14 = df[df['Date Received'] >= datetime.today() - timedelta(days=14)]
+daily_vol = last14.groupby(last14['Date Received'].dt.date).size()
+ax3.plot(daily_vol.index, daily_vol.values, marker='o', color='#4472C4')
+ax3.set_title('Daily Email Volume (14 days)')
+ax3.set_xlabel('Date')
+ax3.set_ylabel('Count')
+ax3.xaxis.set_major_locator(mticker.MaxNLocator(6))
+plt.setp(ax3.xaxis.get_majorticklabels(), rotation=30, ha='right')
+ax3.grid(axis='y', alpha=0.4)
+
+plt.tight_layout()
+plt.savefig('MRO_Mailbox_Report.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("Chart saved → MRO_Mailbox_Report.png")
+
+
+# ─────────────────────────────────────────
+# 6. EXPORT SUMMARY TO EXCEL
+# ─────────────────────────────────────────
+today_str = datetime.today().strftime('%Y-%m-%d')
+
+with pd.ExcelWriter(f'MRO_Report_{today_str}.xlsx', engine='openpyxl') as writer:
+
+    # Raw data
+    df.to_excel(writer, sheet_name='Raw Data', index=False)
+
+    # Weekly summary
+    weekly_summary = pd.DataFrame({
+        'Category': weekly_cats.index,
+        'Count':    weekly_cats.values,
+        'Period':   'Weekly'
+    })
+    weekly_summary.to_excel(writer, sheet_name='Weekly Summary', index=False)
+
+    # Daily summary
+    daily_summary = pd.DataFrame({
+        'Category': daily_cats.index,
+        'Count':    daily_cats.values,
+        'Period':   'Daily'
+    })
+    daily_summary.to_excel(writer, sheet_name='Daily Summary', index=False)
+
+    # Pivot: category × status
+    if not weekly_df.empty:
+        pivot = pd.pivot_table(
+            weekly_df,
+            index='Category',
+            columns='Status',
+            values='Subject',
+            aggfunc='count',
+            fill_value=0
+        )
+        pivot.to_excel(writer, sheet_name='Pivot - Cat x Status')
+
+print(f"\n✅ Report exported → MRO_Report_{today_str}.xlsx")
