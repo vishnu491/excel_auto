@@ -1,0 +1,81 @@
+Process Document – Monitoring and Managing
+Aging Pending Sub-Issues
+Model Risk Management Committee (MRMC) | MRO Workstream
+1. Purpose
+This document provides a detailed, step-by-step process for the identification, monitoring, and management of aging pending Sub-Issues within the Model Risk Management Committee (MRMC) framework. The goal is to ensure that all Sub-Issues approaching or exceeding their target remediation timelines are systematically identified, escalated as appropriate, and resolved in accordance with the Enterprise Issues Management Policy (RMO-EORM-EIM-1000) and internal audit requirements.
+This process supports the quarterly Sub-Issue review obligations of the MRO team and ensures timely reporting to MRMC stakeholders.
+2. Scope
+In Scope:
+•All Sub-Issues in the MRM Issue/Sub-Issue inventory system in SNOW that are currently in a Pending state and have not been actioned within defined aging thresholds.
+•Sub-Issues linked to both active and retired models where remediation deadlines are approaching or overdue.
+•Sub-Issues in "Remediation in Progress", "Draft", and "Pending Review" states that have exceeded their expected due dates.
+•Sub-Issues flagged during quarterly reviews by Model Validation Leads and MRO for thematic analysis.
+Out of Scope:
+•Sub-Issues that are formally closed with documented closure rationale.
+•Issues (as distinct from Sub-Issues) managed under the formal Issue escalation process.
+3. Roles and Responsibilities
+•MRO Team (Model Risk Oversight): Responsible for pulling the aging Sub-Issue register from SNOW, performing initial analysis, and distributing reports on a weekly and quarterly basis.
+•Model Validation Leads: Responsible for performing the initial quarterly lookback on the full and closed Sub-Issue populations. Also accountable for Sub-Issue identification within 30 days of item identification per policy.
+•Chief Model Risk Officer (CMRO) or Delegate: Responsible for creating and maintaining the quarterly review approach document; serves as approver for the Sub-Issue quarterly review and thematic analysis.
+•Model Governance Teammates: Responsible for pulling Sub-Issue listings on a quarterly basis and preparing Sub-Issue reporting to MRMC using the EIM reporting template.
+•RMO Governance and Controls Office (GCO): Reviews and challenges Sub-Issue reporting materials prior to MRMC presentation.
+4. Process Steps
+Step 1: Extract the Aging Pending Sub-Issue Register from SNOW
+Obtain the latest Sub-Issue inventory extract from the MRM Issue/Sub-Issue system in SNOW. The extract should include the following fields:
+oMRM Issue/Sub-Issue ID
+oInventory Number (DINV Identifier)
+oDesignation
+oIssue/Sub-Issue Name
+oStatus
+oIssue/Sub-Issue Owner
+oArcher Finding/Sub-Issue Selection
+oIdentified By
+oMRM Issue/Sub-Issue Category
+oIssue/Sub-Issue Due Date
+oMRM Pending Date
+oMRM Issue/Sub-Issue Close Date
+oValidation Task ID
+oValidation Type
+oUpdated
+oUpdated By
+oUpdated By User
+oClosed By
+•Filter the extract to include only Sub-Issues currently in "Pending" state, including Pending Review, Pending Closure, and other pending sub-statuses.
+Step 2: Apply Aging Thresholds and Classify Sub-Issues
+Using the MRM Pending Date and/or Issue/Sub-Issue Due Date fields, calculate the number of days each Sub-Issue has remained in Pending status. Classify Sub-Issues into the following aging buckets:
+•0–30 days: Within standard remediation window. No escalation required; monitor.
+•31–60 days: Approaching threshold. Flag for awareness; prompt Sub-Issue owner for status update.
+•61–90 days: At risk. Escalate to Model Validation Lead; document reason for delay.
+•90+ days: Overdue. Require CMRO or delegate review; include in MRMC reporting. Assess if Sub-Issue should be elevated to an Issue.
+Step 3: Weekly Monitoring and Tracking
+•The MRO team is responsible for refreshing the aging Sub-Issue tracker on a weekly basis using the latest SNOW extract.
+•Changes in Sub-Issue status (e.g., closures, re-openings, owner reassignments) must be captured and noted in the tracker.
+•Please refer to the Sub-Issues Aging Tracker Excel file for the sample inventory and tracking template.
+•The team is required to prepare the attached aging summary report format for leadership review.
+Step 4: Quarterly Sub-Issue Review
+On a quarterly basis, the following activities are performed in accordance with Section 2.2.8 of the MRMC Policy Procedure:
+•Full Population Review: Pull the complete population of Sub-Issues that are "not closed" as of the quarter-end date (or last business day of the quarter-end month). Include Issue/Sub-Issue determinations and supporting rationales or Issue Finding IDs.
+•Closed Population Review: Pull all Sub-Issues closed within the last 12 months for completeness assessment.
+•Thematic Analysis: Model Validation Leads perform a lookback on the full and closed populations to identify themes and trends. Determine whether any Sub-Issues in aggregate rise to the level of an Issue.
+•Narrative Document: Prepare a quarterly approach document outlining: process for obtaining the Sub-Issue Register, rationale for completeness and accuracy, support for aggregated analysis, and stakeholders engaged in the review. The CMRO or delegate is responsible for creating and maintaining this document.
+•Approval: The CMRO or delegate serves as the approver for the quarterly review output.
+Step 5: Escalation and Issue Elevation Assessment
+•Where aging Sub-Issues (90+ days) show persistent non-remediation or repeated patterns across multiple models, the MRO team must assess whether aggregation warrants formal Issue elevation.
+•Escalations are to be documented and tracked in the quarterly narrative document with rationale for escalation decisions.
+•Issue elevation follows the guidelines within the Issue/Sub-Issue Designation section of the MRMC Policy Procedure and the Enterprise Issues Management Policy (RMO-EORM-EIM-1000).
+Step 6: Reporting to MRMC
+•Utilizing the EIM reporting template, Model Governance Teammates prepare Sub-Issue reporting for submission to MRMC.
+•Reporting materials must be reviewed and challenged by the RMO Governance and Controls Office (GCO) prior to MRMC presentation.
+•The CMRO or delegate serves as the reviewer and approver of Sub-Issue reporting to MRMC.
+•Aging Sub-Issue trends and any escalations/Issue elevations must be explicitly highlighted in MRMC reporting materials.
+5. Policy Reference
+This process document is prepared in alignment with the following policy and procedure references:
+•RMO-EORM-EIM-1000 – Enterprise Issues Management Policy
+•MRMC Policy Procedure Section 2.2.8 – Sub-Issue Identification, Quarterly Reviews, and Reporting
+•Issue/Sub-Issue Designation guidelines as defined within the MRMC Policy Procedure
+6. Document Control
+Document Owner: MRO Team / Model Governance
+Review Frequency: Quarterly (aligned with Sub-Issue quarterly review cycle)
+Approver: Chief Model Risk Officer or Delegate
+Distribution: MRMC members, MRO Team, Model Validation Leads, RMO GCO
+Classification: Confidential – Internal Use Only
