@@ -1,0 +1,7 @@
+Step 3: Classify and Act
+Based on the calculated age, classify each Sub-Issue and take the corresponding action:
+• Within Threshold (≤ 79 days): No action required. Monitor in next monthly cycle.
+• Early Warning (80–90 days): Send a heads-up email to the Validation Lead using the approved early warning template. Goal is to prevent the Sub-Issue from reaching 120 days. Log outreach in the aging tracker (date, recipient, Sub-Issue ID, current age).
+• Threshold Breached (> 120 days): Send an escalation email to the relevant Validation Lead(s) using the approved escalation template. Number of recipients and Sub-Issues per email is determined by volume. Log all escalations in the aging tracker (date, recipient(s), Sub-Issue ID(s), age at escalation).
+Step 4: Update Monthly Aging Tracker
+After completing Steps 1–3, update the Sub-Issues Aging Tracker (Excel) to reflect current status, all outreach and escalations sent, and any closures or status changes since the prior cycle. Prepare and share the monthly aging summary report with leadership.
