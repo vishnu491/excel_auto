@@ -1,0 +1,123 @@
+MRMC – Model Risk Management Committee​CONFIDENTIAL
+Process Document – Monitoring and Managing
+Aging Pending Sub-Issues
+Model Risk Management Committee (MRMC) | MRO Workstream
+
+Background and Problem Statement
+Pending Sub-Issues within the model risk inventory were aging for extended periods without disposition or resolution. This represents a material risk to the organization and is directly tied to an active audit issue. Timely monitoring, proactive outreach, and structured escalation of aging Sub-Issues are therefore critical compliance obligations for the MRMC / MRO team.
+This process document establishes a repeatable, policy-aligned monthly framework for identifying, monitoring, and escalating aging pending Sub-Issues in ServiceNow (SNOW), ensuring no Sub-Issue exceeds its tier-based threshold without documented action.
+
+1. Purpose
+This document provides a detailed, step-by-step process for the identification, proactive monitoring, and escalation management of aging pending Sub-Issues within the MRMC framework. The process is designed to:
+
+• Prevent Sub-Issues from breaching tier-based aging thresholds through early warning outreach.
+• Ensure timely escalation where thresholds have been crossed.
+• Support quarterly Sub-Issue review obligations under MRMC Policy Procedure Section 2.2.8.
+• Address the active audit issue related to aging pending Sub-Issues through a structured, documented monthly cadence.
+2. Scope
+In Scope:
+• All Sub-Issues in the MRM Issue/Sub-Issue inventory in SNOW currently in a "Pending" status (including Pending Review and related pending sub-statuses).
+• Sub-Issues linked to Tier 1, Tier 2, Tier 3, and Tier 4 models, with differentiated aging thresholds applied per tier.
+• Sub-Issues approaching or having exceeded their defined aging threshold requiring proactive communication or formal escalation.
+Out of Scope:
+• Sub-Issues that are formally closed with documented closure rationale.
+• Formal Issues (as distinct from Sub-Issues) managed under the Issue escalation process.
+3. Tier-Based Aging Thresholds
+Aging thresholds for pending Sub-Issues are applied based on model tier designation as follows:
+Model Tier
+Aging Threshold
+Early Warning Flag
+Tier 1 & Tier 2
+120 days
+80–90 days
+Tier 3 & Tier 4
+1 Year (Annual Review Cycle)
+Aligned to annual review cadence
+Age Calculation: Age is calculated as the number of calendar days elapsed from the later of the Sub-Issue Submission Date or Due Date through the current run date.
+Note: Tier 3 and Tier 4 thresholds are tied to the annual model review cycle. Management should consider coordinating Sub-Issue remediation with scheduled Annual Validations (AV) to improve efficiency.
+
+4. Roles and Responsibilities
+• MRO Team (Model Risk Oversight): Responsible for pulling the monthly SNOW extract, calculating aging, identifying near-breach and breached Sub-Issues, and sending proactive and escalation communications.
+• Validation Leads: Primary recipients of both early warning notifications and escalation emails. Responsible for providing status updates and driving timely remediation.
+• Model Governance Teammates: Responsible for pulling Sub-Issue listings on a quarterly basis and preparing Sub-Issue reporting to MRMC using the EIM reporting template.
+• Chief Model Risk Officer (CMRO) or Delegate: Responsible for creating and maintaining the quarterly review approach document; serves as approver for quarterly review output and MRMC reporting.
+• RMO Governance and Controls Office (GCO): Reviews and challenges Sub-Issue reporting materials prior to MRMC presentation.
+5. Process Steps
+Step 1: Pull Pending Sub-Issue Data from SNOW
+At the start of each month, extract the current Sub-Issue inventory from the MRM Issue/Sub-Issue system in SNOW. Apply the following filter:
+• Status = "Pending" (inclusive of all Pending sub-statuses)
+Ensure the extract includes the following fields:
+o MRM Issue/Sub-Issue ID
+o Inventory Number (DINV Identifier)
+o Designation / Model Tier
+o Issue/Sub-Issue Name
+o Status
+o Issue/Sub-Issue Owner
+o Archer Finding/Sub-Issue Selection
+o Identified By
+o MRM Issue/Sub-Issue Category
+o Issue/Sub-Issue Due Date
+o MRM Pending Date (Submission Date)
+o MRM Issue/Sub-Issue Close Date
+o Validation Task ID
+o Validation Type
+o Updated
+o Updated By
+o Updated By User
+o Closed By
+Step 2: Calculate Sub-Issue Age
+• For each Sub-Issue, determine the age start date as the later of: the MRM Pending Date (Submission Date) or the Issue/Sub-Issue Due Date.
+• Calculate: Age (days) = Current Run Date – Age Start Date
+• Tag each Sub-Issue with its model Tier designation to enable threshold-based classification in the next step.
+Step 3: Classify Sub-Issues – Early Warning vs. Breached
+Classify each pending Sub-Issue into one of the following categories based on its tier and calculated age:
+• Within Threshold: Tier 1/2 ≤ 79 days | Tier 3/4 within annual cycle. No action required; continue monitoring.
+• Early Warning (Tier 1/2 only): 80–90 days pending. Flag for proactive outreach to Validation Lead (see Step 4).
+• Threshold Breached: Tier 1/2 > 120 days | Tier 3/4 beyond annual review cycle. Formal escalation required (see Step 5).
+Step 4: Proactive Early Warning Outreach
+For Sub-Issues in the Early Warning category (Tier 1/2, 80–90 days):
+• Send a heads-up email to the relevant Validation Lead notifying them that the Sub-Issue is approaching the 120-day threshold.
+• Goal: Prevent Sub-Issues from breaching the 120-day threshold, not merely react after breach. This is a proactive, forward-looking control.
+• Use the approved email template for early warning notifications. Tailor the communication based on the number of Sub-Issues and recipients.
+• Document the outreach in the monthly aging tracker (date sent, recipient, Sub-Issue ID, current age).
+Step 5: Formal Escalation for Breached Sub-Issues
+For Sub-Issues that have crossed the applicable threshold (120 days for Tier 1/2; annual cycle for Tier 3/4):
+• Identify all threshold-breached Sub-Issues from the current monthly extract.
+• Send formal escalation emails to the relevant Validation Leads using the approved escalation email template.
+• Escalation format (number of recipients and Sub-Issues covered per email) is determined by the number of Sub-Issues and Validation Leads involved.
+• Document all escalations in the monthly tracker: date, recipient(s), Sub-Issue ID(s), age at escalation, and response received.
+• Where Sub-Issues show persistent non-remediation or patterns across multiple models, assess whether aggregate elevation to a formal Issue is warranted under Enterprise Issues Management Policy (RMO-EORM-EIM-1000).
+Step 6: Monthly Cadence and Tracker Refresh
+• This exercise is performed at the start of each month (e.g., on or around the 1st business day of the month).
+• Steps 1–5 are repeated each cycle: pull fresh data, recalculate ages, re-classify Sub-Issues, identify new early warning and breached cases.
+• Update the Sub-Issues Aging Tracker (Excel) to reflect current status, communications sent, and any closures or status changes since the prior cycle.
+• Prepare and distribute the monthly aging summary report to leadership in the required format.
+Step 7: Quarterly Review and MRMC Reporting
+In addition to the monthly cadence, the following quarterly activities are performed per MRMC Policy Procedure Section 2.2.8:
+• Full Population Review: Pull all Sub-Issues not closed as of quarter-end date, with Issue/Sub-Issue determinations and supporting rationale or Issue Finding IDs.
+• Closed Population Review: Pull all Sub-Issues closed within the last 12 months.
+• Thematic Analysis: Model Validation Leads identify themes and trends; assess whether any Sub-Issues in aggregate rise to Issue level.
+• Quarterly Narrative Document: Prepared by CMRO or delegate; outlines approach, completeness rationale, analysis, and stakeholders engaged.
+• MRMC Reporting: Sub-Issue reporting prepared using the EIM template by Model Governance Teammates, reviewed by RMO GCO, and approved by CMRO or delegate prior to MRMC presentation. Aging trends and escalations are explicitly highlighted.
+ 
+
+6. Strategic Consideration – Bundling with Annual Validations
+When scheduling an Annual Validation (AV) for a model, the MRO team and Validation Leads should proactively consider bundling pending Sub-Issues, model changes, and other open items into the same review cycle where possible. This approach:
+
+• Reduces the risk of Sub-Issues aging beyond thresholds by aligning remediation to existing validation schedules.
+• Improves operational efficiency for Validation Leads by consolidating review activities.
+• Is particularly relevant for Tier 3 and Tier 4 models where the annual review cycle forms the natural remediation window.
+7. Policy Reference
+This process document is prepared in alignment with the following references:
+• RMO-EORM-EIM-1000 – Enterprise Issues Management Policy
+• MRMC Policy Procedure Section 2.2.8 – Sub-Issue Identification, Quarterly Reviews, and Reporting
+• Pending Model Sub-Issue Management Procedure (latest version – team advised to read prior to execution)
+• Issue/Sub-Issue Designation guidelines as defined within the MRMC Policy Procedure
+8. Document Control
+Document Owner: MRO Team / Model Governance
+Review Frequency: Monthly (operational) | Quarterly (Sub-Issue review cycle)
+Approver: Chief Model Risk Officer or Delegate
+Distribution: MRMC members, MRO Team, Validation Leads, Model Governance Teammates, RMO GCO
+Classification: Confidential – Internal Use Only
+
+Process Document – Monitoring and Managing Aging Pending Sub-Issues​Page of
