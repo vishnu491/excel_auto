@@ -1,0 +1,80 @@
+MRMC – Model Risk Management Committee​CONFIDENTIAL
+Process Document – Aging Pending Model Sub-Issues
+Monitoring and Management
+Model Risk Management Committee (MRMC) | MRO Workstream
+
+Background and Purpose
+The purpose of this monitoring is to review aging pending model Sub-Issues against risk-based thresholds. This process covers escalation, root cause analysis, corrective actions (including scenarios when no action is needed), reporting, and defined protocols in the event of persistent threshold breaches. Tactical execution steps are also defined.
+
+1. Scope
+In Scope:
+• All model Sub-Issues in SNOW with Pending Validation or Closed status, across all tiers.
+• Sub-Issues approaching or exceeding the risk-based disposition timeframes defined per model tier.
+Out of Scope:
+• Sub-Issues not yet submitted or in Draft state.
+• Formal Issues managed under the separate Issue escalation process.
+2. Risk-Based Thresholds
+Sub-Issue disposition should be completed within the following timeframes based on model tier:
+Model Tier
+Pending Sub-Issue Disposition Timeframe
+Tier 1 and Tier 2
+120 days from the latter of the Sub-Issue due date or the Sub-Issue submission date
+Tier 3 and Tier 4
+Within 1 calendar year from the Sub-Issue submission date
+Sub-Issue Disposition Duration: For Pending Validation status — extraction date minus the later of the Sub-Issue due date or submission date. For Closed status — close date minus the Pending Validation date.
+
+3. Roles and Responsibilities
+• MRO Governance: Pulls monthly Sub-Issue extract, monitors disposition duration, classifies Sub-Issues, sends escalation emails, and maintains the aging tracker.
+• Validation Leads: Primary recipients of escalation communications; responsible for timely Sub-Issue remediation and corrective actions.
+• Deputy CMRO: Informed when overdue Sub-Issues are between 11–15.
+• CMRO: Informed when overdue Sub-Issues exceed 16; oversees root cause analysis and corrective action decisions.
+• Model Governance Teammates: Upload review evidence to MRO ShareDrive; prepare quarterly MRMC reporting.
+4. Process Steps
+Step 1: Pull Sub-Issue Data from SNOW
+Within +/– 5 business days from month end, extract Sub-Issues from SNOW filtered to Pending Validation or Closed status. Ensure the extract includes:
+o MRM Issue/Sub-Issue ID
+o Inventory Number (DINV Identifier)
+o Designation / Model Tier
+o Issue/Sub-Issue Name
+o Status
+o Issue/Sub-Issue Owner
+o Archer Finding/Sub-Issue Selection
+o Identified By
+o MRM Issue/Sub-Issue Category
+o Issue/Sub-Issue Due Date
+o MRM Pending Date (Submission Date)
+o MRM Issue/Sub-Issue Close Date
+o Validation Task ID
+o Validation Type
+o Updated
+o Updated By
+o Updated By User
+o Closed By
+Step 2: Calculate Sub-Issue Disposition Duration
+Calculate the disposition duration for each Sub-Issue:
+o Pending Validation status: Extraction date – the later of the Sub-Issue due date or submission date.
+o Closed status: Close date – Pending Validation date.
+Step 3: Classify and Act
+Based on the calculated duration, classify each Sub-Issue and take the corresponding action:
+• Within Threshold: No action required. Monitor in next monthly cycle.
+• Approaching Threshold: Send a proactive notification to the Validation Lead before the threshold is breached. Log outreach in the aging tracker.
+• Threshold Breached (overdue): Initiate escalation based on the total number of overdue Sub-Issues:
+o 1–10 overdue: Inform the associated model Validation Lead; monitor for corrective actions.
+o 11–15 overdue: Inform the model Validation Lead and the Deputy CMRO; monitor for corrective actions.
+o >16 overdue: Inform the model Validation Lead and the CMRO; monitor for corrective actions.
+Step 4: Update Monthly Aging Tracker
+Update the Sub-Issues Aging Tracker (Excel) to reflect current disposition status, all outreach and escalations sent, and any closures or status changes since the prior cycle. Upload review evidence to the associated control evidence folder on the MRO ShareDrive. Prepare and share the monthly aging summary report with leadership.
+
+5. Root Cause Analysis
+A root cause analysis is required when there are 10 or more total Sub-Issues exceeding the thresholds. Based on the results, appropriate corrective actions will be applied.
+
+6. Corrective Actions
+Potential corrective actions include:
+• No Action: No action may be warranted if there is reasonable evidence the model will be retired within one quarter from the Sub-Issue threshold date, or if the CMRO deems other activities are higher priority. The rationale for no action must be documented.
+• Schedule and Execute a Review: A model review will be scheduled to disposition the Sub-Issue, if one does not already exist, with execution monitored.
+• Scheduling: Adjusting the validation schedule to account for Sub-Issue disposition on a go-forward basis.
+7. Persistent Threshold Breaches
+Persistent threshold breaches will involve an analysis of validator resource capacity and/or performance to understand and address the cause of the ongoing threshold breaches.
+
+8. Reporting
+Model Sub-Issue disposition monitoring will be reported quarterly to MRMC, inclusive of monitoring results from each month within the reporting quarter.
