@@ -1,0 +1,60 @@
+import pandas as pd
+from collections import defaultdict
+
+# ---- CONFIG ----
+INPUT_FILE = "model_links.xlsx"   # or .csv
+SHEET_NAME = 0
+OUTPUT_FILE = "model_relationships.xlsx"
+
+# ---- LOAD ----
+if INPUT_FILE.endswith(".csv"):
+    df = pd.read_csv(INPUT_FILE)
+else:
+    df = pd.read_excel(INPUT_FILE, sheet_name=SHEET_NAME)
+
+df.columns = [c.strip() for c in df.columns]
+
+def clean_id(val):
+    """Normalize a cell: strip spaces, treat blank/0 as no value."""
+    if pd.isna(val):
+        return None
+    s = str(val).strip()
+    if s == "" or s == "0":
+        return None
+    return s
+
+df["Upstream"] = df["Upstream"].apply(clean_id)
+df["Downstream"] = df["Downstream"].apply(clean_id)
+
+# Drop fully empty rows
+df = df.dropna(how="all", subset=["Upstream", "Downstream"]).reset_index(drop=True)
+
+# ---- BUILD RELATIONSHIP MAP ----
+upstream_map = defaultdict(set)
+downstream_map = defaultdict(set)
+
+for _, row in df.iterrows():
+    up, down = row["Upstream"], row["Downstream"]
+    if up and down:
+        downstream_map[up].add(down)   # up's downstream includes `down`
+        upstream_map[down].add(up)     # down's upstream includes `up`
+    elif up and not down:
+        downstream_map.setdefault(up, set())  # upstream model, no downstream
+    elif down and not up:
+        upstream_map.setdefault(down, set())  # downstream model, no upstream
+
+all_models = set(upstream_map.keys()) | set(downstream_map.keys())
+
+result = []
+for model in sorted(all_models):
+    ups = sorted(upstream_map.get(model, []))
+    downs = sorted(downstream_map.get(model, []))
+    result.append({
+        "Model": model,
+        "Upstream": ", ".join(ups) if ups else "",
+        "Downstream": ", ".join(downs) if downs else ""
+    })
+
+out_df = pd.DataFrame(result)
+out_df.to_excel(OUTPUT_FILE, index=False)
+print(f"Done. {len(out_df)} models written to {OUTPUT_FILE}")
