@@ -1,0 +1,48 @@
+Use Exception Monitoring Tracker — Process Document
+
+1. Purpose
+The tracker is to monitor use exceptions and confirm the following:
+1. Compensating measures start on the same date recorded in ServiceNow (planned start date vs. actual start date).
+2. Compensating measures are performed as stated, consistent with what was committed to in the use exception.
+3. Validation is completed and the exception is closed on time.
+2. Scope
+Initial population: all use exceptions.
+Include only: Approved and In Progress exceptions.
+Exclude: Closed, Cancelled, Rejected, and Draft exceptions.
+Scope is limited to exceptions caused by a change in model use (not new-use models).
+Grace period monitoring is part of change management, not this tracker — this is already handled by an existing automated script.
+3. Compensating Measure Start Date
+Compare the planned start date of the compensating measure (as stated in the use exception) against the actual start date, i.e. the date the first compensating measure report was submitted.
+Any delay between planned and actual start date should be monitored.
+4. Compensating Measure Performance
+Compare what was committed to in the use exception (e.g., a stated compensating measure and threshold) against what was actually performed, as recorded in the Monitoring Task.
+In some cases, the compensating measure is recorded in the Development Task instead of the Monitoring Task. Where this occurs, the model should be listed in a separate tab in the tracker, to be used to follow up with stakeholders.
+Where a compensating measure description is very general or unclear, this should not be assumed acceptable. These cases should be recorded separately, since unclear descriptions often indicate the compensating measure is not effective or lacks sufficient detail. These should be raised with stakeholders for more detail.
+5. Validation Completion and Exception Closure
+For change exceptions, validation is performed via LSV. Check the validation task to confirm whether the LSV is completed.
+Once validation is completed, confirm the related exception is closed in ServiceNow on time.
+6. Exception Duration (Calculated Field)
+For open exceptions: Exception Duration = Today's Date − Decision Date.
+For closed exceptions (validation completed and exception closed): Exception Duration = Exception Closure Date − Decision Date.
+Decision Date is the date the exception was approved, pulled from the MRM Transaction Exception table (ServiceNow Data Visualization, Data Source: MRM).
+7. Tracker Fields
+Field
+Source
+Decision Date
+MRM Transaction Exception table (ServiceNow Data Visualization, Data Source: MRM)
+Compensating Measure – Planned Start Date
+Use Exception submission
+Compensating Measure – Actual Start Date
+Monitoring Task / OGM (or Development Task, where applicable)
+Compensating Measure Description / Threshold (Planned)
+Use Exception submission
+Compensating Measure – Actual Performance
+Monitoring Task (or Development Task, where applicable)
+Validation Task Status
+Validation Task (LSV for change exceptions)
+Exception Closure Date
+ServiceNow
+Exception Duration (Calculated)
+Today's Date – Decision Date; or Closure Date – Decision Date once closed
+8. Cadence
+The tracker is to be reviewed monthly.
