@@ -1,0 +1,93 @@
+Use Exception Monitoring Tracker — Process Document
+
+1. Purpose
+The tracker is to monitor use exceptions and confirm the following:
+1. Compensating measures start on the same date recorded in ServiceNow (planned start date vs. actual start date).
+2. Compensating measures are performed as stated, consistent with what was committed to in the use exception.
+3. Validation is completed and the exception is closed on time.
+4. Exceptions are closed out appropriately once the underlying model activity is complete, or when the model is retired.
+2. Scope
+Initial population: all use exceptions.
+Include only: Approved and In Progress exceptions.
+Exclude: Closed, Cancelled, Rejected, and Draft exceptions.
+Scope is limited to exceptions caused by a change in model use (not new-use models).
+Grace period monitoring is part of change management, not this tracker — this is already handled by an existing automated script.
+3. Compensating Measure Requirement by Exception Type
+Compensating measures (with sign-off) are only required for Use exceptions. This is because the model, or the change impacting the model, has not yet been validated, which carries a higher level of risk.
+Compensating measures are not required for Development exceptions or Validation exceptions. These are timing items — the work was late, but the risk profile is not the same as an unvalidated use in production.
+4. Compensating Measure Start Date (Use Exceptions Only)
+Compare the planned start date of the compensating measure (as stated in the use exception) against the actual start date, i.e. the date the first compensating measure report was submitted.
+Any delay between planned and actual start date should be monitored.
+5. Compensating Measure Performance (Use Exceptions Only)
+Compare what was committed to in the use exception (e.g., a stated compensating measure and threshold) against what was actually performed, as recorded in the Monitoring Task.
+In some cases, the compensating measure is recorded in the Development Task instead of the Monitoring Task. Where this occurs, the model should be listed in a separate tab in the tracker, to be used to follow up with stakeholders.
+Where a compensating measure description is very general or unclear, this should not be assumed acceptable. These cases should be recorded separately, since unclear descriptions often indicate the compensating measure is not effective or lacks sufficient detail. These should be raised with stakeholders for more detail.
+6. Identifying Whether a Validation Task Is Required
+For a given exception, check the model's Change Request tab to see if there is a change request.
+If the change request is a Tier 1 or Tier 2 material change, then validation is required.
+Go to the Validation tab on the model to find the associated Validation ID and confirm whether it has been completed.
+7. Exception Closure Logic
+7.1 Use Exceptions
+A use exception is closed in one of two ways: the model is retired, or the relevant validation is completed (which may be preceded by a development task, depending on whether the change is new-model or model-change related).
+7.2 Development Exceptions
+A development exception is closed once the relevant development task (e.g., the current cycle's MDD update) is completed. It does not require a separate validation task to close.
+7.3 Validation Exceptions
+A validation exception is closed once the appropriate validation (AV or FSV, as applicable) is completed.
+7.4 Model Retirement
+Model retirement closes all associated exceptions — use, development, and validation — regardless of type. Retired models with exceptions still open in ServiceNow should be flagged for closure.
+8. Early Closure Rule (Use Exceptions)
+If validation is completed before the compensating measure's first due date, the exception can be closed immediately. There is no need to wait for a first compensating measure report to be submitted.
+9. Exception Duration and Boundary Date
+For open exceptions: Exception Duration = Today's Date − Decision Date.
+For closed exceptions: Exception Duration = Exception Closure Date − Decision Date.
+Decision Date is the date the exception was approved, pulled from the MRM Transaction Exception table (ServiceNow Data Visualization, Data Source: MRM).
+Each exception also has a system-generated Exception Boundary Date, set automatically to Decision Date + 365 days (one year). This is the maximum allowable duration before the exception is expected to move toward closed/complete. It is a ceiling, not a target — exceptions should be closed well within a year wherever possible. The tracker should monitor exceptions approaching this boundary date.
+10. Monitoring for Retired Models with Open Exceptions
+Some models have been retired while their associated exceptions remain open in ServiceNow. These should be identified and flagged so they can be closed out.
+11. Monitoring Approval-Pending, Already-Compensated Exceptions
+Some exceptions have had their compensating measures completed but are still awaiting approval to formally close. These should be identified and flagged separately (approximately 5–6 such cases were noted as of this discussion).
+12. Delay Metric
+For use exceptions, the tracker should calculate the delay between the compensating measure's stated due date and the actual completion date of the relevant validation or development task.
+If validation completes ahead of the compensating measure due date, this is not treated as a delay — early completion is acceptable and allows for early closure.
+This delay metric does not apply to development or validation exceptions, since compensating measures are not required for those types. For a validation exception, on-time performance is assessed simply by whether the relevant validation (e.g., AV or FSV) is completed within the committed year.
+13. Guidance on Setting the Compensating Measure First Due Date
+There is no fixed rule for this, but the following considerations apply when assessing whether a proposed first due date is reasonable:
+• Does the date meaningfully mitigate the risk of the exception?
+• How does it compare to the model's standard monitoring (OGM) frequency? The compensating measure cadence should generally be equal to or more frequent than standard monitoring — for example, a model on a quarterly OGM cycle might move to monthly compensating checks, potentially starting at the normal quarter-end and then continuing monthly.
+• The appropriate lead time is situation-dependent, but should generally be sooner than the standard cadence, since it is meant to compensate for elevated risk.
+14. Handling Blank Compensating Measure Fields
+Many decisioned exceptions currently do not have the Compensating Measure Type or Compensating Measure First Due Date populated. Before flagging these for follow-up, filter and review by submission date, since the submission workflow does not allow going backward and forward to correct entries once submitted — corrections require reaching out to the original submitter directly.
+Where fields remain blank after this check, follow up with the submitter to have the values entered.
+15. Tracker Fields
+Field
+Source
+Decision Date
+MRM Transaction Exception table (ServiceNow Data Visualization, Data Source: MRM)
+Exception Type
+ServiceNow (Use / Development / Validation)
+Exception Boundary Date
+ServiceNow (system-generated: Decision Date + 365 days)
+Compensating Measure – Planned Start Date (Use exceptions only)
+Use Exception submission
+Compensating Measure – Actual Start Date (Use exceptions only)
+Monitoring Task / OGM (or Development Task, where applicable)
+Compensating Measure Description / Threshold (Use exceptions only)
+Use Exception submission
+Compensating Measure – Actual Performance (Use exceptions only)
+Monitoring Task (or Development Task, where applicable)
+Change Request Tier (for Use exceptions)
+Change Request tab on the model
+Validation ID (if validation required)
+Validation tab on the model
+Validation Task Status / Completion Date
+Validation Task (AV or FSV, as applicable)
+Development Task Status / Completion Date (Development exceptions)
+Development Task
+Model Status (Active / Retired)
+ServiceNow
+Exception Closure Date
+ServiceNow
+Exception Duration (Calculated)
+Today's Date – Decision Date; or Closure Date – Decision Date once closed
+16. Cadence
+The tracker is to be reviewed monthly.
